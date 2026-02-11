@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: fct_vendas
+    description: "Fato de vendas com todas as métricas e dimensões"
+    columns:
+      - name: venda_id
+        tests:
+          - unique
+          - not_null
+      - name: valor_final
+        tests:
+          - not_null
+  
+  - name: dim_produtos
+    description: "Dimensão de produtos com métricas agregadas"
+    columns:
+      - name: produto_id
+        tests:
+          - unique
+          - not_null
+      - name: receita_total
+        tests:
+          - not_null
+  
+  - name: dim_clientes
+    description: "Dimensão de clientes com métricas agregadas"
+    columns:
+      - name: cliente_id
+        tests:
+          - unique
+          - not_null
+      - name: valor_total_gasto
+        tests:
+          - not_null
+  
+  - name: mart_vendas_mensal
+    description: "Mart de vendas agregado por mês para dashboards"
+    columns:
+      - name: mes
+        tests:
+          - unique
+          - not_null
+

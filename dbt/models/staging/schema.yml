@@ -1,0 +1,66 @@
+version: 2
+
+sources:
+  - name: raw
+    description: "Dados brutos do Iceberg"
+    tables:
+      - name: vendas_iceberg
+        description: "Tabela Iceberg com dados de vendas"
+        columns:
+          - name: venda_id
+            description: "ID único da venda"
+          - name: data_venda
+            description: "Data da venda"
+          - name: timestamp_venda
+            description: "Timestamp completo da venda"
+          - name: produto_id
+            description: "ID do produto"
+          - name: produto_nome
+            description: "Nome do produto"
+          - name: categoria
+            description: "Categoria do produto"
+          - name: preco_unitario
+            description: "Preço unitário do produto"
+          - name: quantidade
+            description: "Quantidade vendida"
+          - name: valor_total
+            description: "Valor total antes do desconto"
+          - name: desconto_percentual
+            description: "Percentual de desconto aplicado"
+          - name: valor_desconto
+            description: "Valor do desconto em reais"
+          - name: valor_final
+            description: "Valor final da venda"
+          - name: cliente_id
+            description: "ID do cliente"
+          - name: cliente_nome
+            description: "Nome do cliente"
+          - name: cliente_email
+            description: "Email do cliente"
+          - name: cliente_cidade
+            description: "Cidade do cliente"
+          - name: cliente_estado
+            description: "Estado do cliente"
+          - name: canal_venda
+            description: "Canal de venda (Online, Loja Física, etc)"
+          - name: status
+            description: "Status da venda"
+
+models:
+  - name: stg_vendas
+    description: "Staging model com dados de vendas limpos e padronizados"
+    columns:
+      - name: venda_id
+        description: "ID único da venda"
+        tests:
+          - unique
+          - not_null
+      - name: data_venda
+        description: "Data da venda"
+        tests:
+          - not_null
+      - name: valor_final
+        description: "Valor final da venda"
+        tests:
+          - not_null
+

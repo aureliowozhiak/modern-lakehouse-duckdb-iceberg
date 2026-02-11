@@ -1,0 +1,29 @@
+name: 'lakehouse_dbt'
+version: '1.0.0'
+config-version: 2
+
+profile: 'lakehouse'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  lakehouse_dbt:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
+
+vars:
+  minio_bucket: "lakehouse"
+  minio_endpoint: "minio:9000"
+

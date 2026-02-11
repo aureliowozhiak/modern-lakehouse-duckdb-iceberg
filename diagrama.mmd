@@ -1,0 +1,83 @@
+graph TB
+    %% --- Definição de Estilos para simular o visual da imagem ---
+    classDef container fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#000,rx:5,ry:5;
+    classDef storage fill:#eceff1,stroke:#455a64,stroke-width:2px,color:#000,rx:5,ry:5;
+    classDef volume fill:#cfd8dc,stroke:#455a64,stroke-width:2px,color:#000,shape:cyl;
+    classDef external fill:none,stroke:none,color:#000,font-size:14px;
+    classDef boundary fill:none,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5,color:#333;
+    classDef labelText fill:none,stroke:none,color:#333,font-size:13px;
+
+    %% Título (Adicionado como um nó de texto no topo)
+    Title[("Modern Local Lakehouse Architecture with Docker Compose")]:::external
+
+    %% --- Atores Externos e Script Inicial ---
+    UserDE_L["👤 User / Data Engineer"]:::external
+    UserDE_R["👤 User / Data Engineer"]:::external
+    %% CORREÇÃO AQUI: Aspas adicionadas ao redor do texto do rótulo
+    PyScriptLocal[">_ Python Ingestion Script\n(Terminal)"]:::storage
+
+    %% --- Camada Principal - Docker Compose ---
+    subgraph DockerComposeBoundary ["Docker Compose Orchestration & Container Layer"]
+        direction TB
+        
+        %% Subgrupo para forçar os rótulos de texto à direita
+        subgraph LabelsWrapper [ ]
+            direction TB
+            style LabelsWrapper fill:none,stroke:none
+            EnvVars["Environment Variables"]:::labelText
+            PortMap["Port Mapping"]:::labelText
+        end
+
+        %% Rede Docker Interna
+        subgraph DockerNetBoundary ["Docker Network ('lakehouse_net')"]
+             %% Ajuste de direção interna para tentar replicar o fluxo horizontal
+            direction LR
+            
+            %% Contêineres
+            PyCont["🐍 Python Script Container\n(Data Generation)"]:::container
+            
+            %% Agrupamento visual para o MinIO
+            subgraph MinIOBox ["MinIO Container (Object Storage)"]
+                style MinIOBox fill:#e3f2fd,stroke:#1565c0,rx:5,ry:5,color:#000
+                MinIOBucket["🪣 Bucket\n(e.g., 'lakehouse-data')\nIceberg Tables"]:::storage
+            end
+            
+            DuckDB["🦆 DuckDB Container\n(Analytical Engine)\nOLAP Query Engine"]:::container
+            
+            DBT["✖️ dbt Container\n(Transformation Layer)\nData Transformation"]:::container
+        end
+    end
+
+    %% --- Camada de Armazenamento Persistente ---
+    subgraph StorageLayerBoundary ["Persistent Storage Layer"]
+        direction LR
+        VolMinIO[(Docker Volumes\nPersistent Data)]:::volume
+        VolDuck[(Docker Volumes\nPersistent Data)]:::volume
+    end
+
+    %% --- Relacionamentos e Fluxo ---
+
+    %% Conectar Título (apenas visual)
+    Title -.- DockerComposeBoundary
+
+    %% Fluxo de Ingestão (Esquerda)
+    UserDE_L --> PyScriptLocal
+    PyScriptLocal -->|"1. Generate Simulated Data"| PyCont
+    PyCont -->|"2. Store Data (Parquet/Iceberg)"| MinIOBucket
+
+    %% Fluxo de Consulta e Transformação (Centro/Direita)
+    DuckDB -->|"4. Query Iceberg Files"| MinIOBucket
+    DBT -->|"5. Execute Analytical Transformations"| DuckDB
+    DBT -.->|Leitura/Escrita| MinIOBucket
+
+    %% Fluxo do Usuário Final (Direita)
+    UserDE_R -->|"6. Execute Analytical Queries"| DuckDB
+
+    %% Conexões de Volume Persistente (Setas bidirecionais grossas)
+    MinIOBox === VolMinIO
+    DuckDB === VolDuck
+
+    %% --- Aplicação de estilos às bordas dos subgráficos ---
+    style DockerComposeBoundary fill:#f5f5f5,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5,color:#333
+    style DockerNetBoundary fill:#ffffff,stroke:#666,stroke-width:2px,color:#333
+    style StorageLayerBoundary fill:#eeeeee,stroke:#666,stroke-width:2px,color:#333
