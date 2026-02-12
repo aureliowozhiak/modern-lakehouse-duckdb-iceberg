@@ -61,7 +61,7 @@ Um **Lakehouse** combina as melhores características de um **Data Lake** (armaz
 ## 🏗️ Arquitetura
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/aureliowozhiak/modern-lakehouse-duckdb-iceberg/main/docs/lakehouse-diagram.png" alt="Arquitetura do Lakehouse" width="800"/>
+  <img src="https://raw.githubusercontent.com/aureliowozhiak/modern-lakehouse-duckdb-iceberg/refs/heads/main/doc/lakehouse-diagram.png" alt="Arquitetura do Lakehouse" width="800"/>
 </p>
 
 ### Fluxo de Dados
