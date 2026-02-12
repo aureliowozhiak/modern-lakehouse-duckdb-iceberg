@@ -2,6 +2,24 @@
 
 Laboratório prático de um **Lakehouse moderno e 100% open source** totalmente containerizado, demonstrando conceitos avançados de engenharia de dados como versionamento, time travel, schema evolution e transformações com dbt.
 
+
+> 🚀 **Reproduza um Lakehouse moderno, feature-complete e open source em minutos usando DuckDB, Iceberg, MinIO e dbt – tudo orquestrado via Docker Compose.**
+>
+> - **Time travel**, **schema evolution** e **tables versionadas**
+> - Transforma dados usando **dbt** (Python)
+> - Exemplo 100% prático + scripts didáticos
+> - **Notebooks Jupyter** prontos para análise
+> - Deploy local, 100% open (sem cloud/lock-in!)
+
+[![Repositório no GitHub](https://img.shields.io/github/stars/aureliowozhiak/modern-lakehouse-duckdb-iceberg?style=social)](https://github.com/aureliowozhiak/modern-lakehouse-duckdb-iceberg)
+
+---
+
+- **Repositório:** [https://github.com/aureliowozhiak/modern-lakehouse-duckdb-iceberg](https://github.com/aureliowozhiak/modern-lakehouse-duckdb-iceberg)
+- **Documentação completa:** Veja exemplos de queries, screenshots, vídeos e detalhes técnicos no [repositório do GitHub](https://github.com/aureliowozhiak/modern-lakehouse-duckdb-iceberg)
+
+
+
 ## 📋 Índice
 
 - [Visão Geral](#visão-geral)
@@ -42,42 +60,9 @@ Um **Lakehouse** combina as melhores características de um **Data Lake** (armaz
 
 ## 🏗️ Arquitetura
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│                         Docker Compose                         │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐  │
-│  │    MinIO     │      │    DuckDB    │      │     dbt      │  │
-│  │  (S3 Local)  │◄─────┤  (Analytics) │◄─────┤ (Transform)  │  │
-│  │  Port: 9000  │      │              │      │              │  │
-│  │  Port: 9001  │      │              │      │              │  │
-│  └──────────────┘      └──────────────┘      └──────────────┘  │
-│         ▲                    ▲                    ▲            │
-│         │                    │                    │            │
-│         └────────────────────┴────────────────────┘            │
-│                              │                                 │
-│                    ┌──────────────┐                            │
-│                    │   Jupyter    │                            │
-│                    │   (Notebooks)│                            │
-│                    │  Port: 8888  │                            │
-│                    └──────────────┘                            │
-│                            ▲                                   │
-│                            │                                   │
-│        ────────────────────┘                                   │
-│              Iceberg Tables                                    │
-│         (s3://lakehouse/iceberg/)                              │
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              Init Service (One-time)                     │  │
-│  │  • Cria bucket                                           │  │
-│  │  • Gera dados fake                                       │  │
-│  │  • Cria tabela Iceberg                                   │  │
-│  │  • Insere dados                                          │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/aureliowozhiak/modern-lakehouse-duckdb-iceberg/main/docs/lakehouse-diagram.png" alt="Arquitetura do Lakehouse" width="800"/>
+</p>
 
 ### Fluxo de Dados
 
