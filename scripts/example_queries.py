@@ -268,7 +268,7 @@ def main():
             print(f"\n✓ Tabela encontrada com {count:,} registros\n")
         except Exception as e:
             print(f"\n❌ Tabela 'vendas_iceberg' não encontrada!")
-            print("Execute primeiro o script create_iceberg_table.py")
+            print("Execute primeiro o script create_real_iceberg_table.py")
             sys.exit(1)
         
         # Executar queries

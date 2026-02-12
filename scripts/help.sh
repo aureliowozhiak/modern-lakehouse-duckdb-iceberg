@@ -2,7 +2,7 @@
 # Script de ajuda rápida para o projeto
 
 echo "=========================================="
-echo "Modern Lakehouse - Comandos Úteis"
+echo "Modern Opensource Lakehouse - Comandos Úteis"
 echo "=========================================="
 echo ""
 echo "1. Iniciar todos os serviços:"

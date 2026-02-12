@@ -1,6 +1,6 @@
-# Modern Lakehouse: DuckDB + Apache Iceberg + MinIO + dbt
+# Modern Opensource Lakehouse: DuckDB + Apache Iceberg + MinIO + dbt
 
-Laboratório prático de um **Lakehouse moderno** totalmente containerizado, demonstrando conceitos avançados de engenharia de dados como versionamento, time travel, schema evolution e transformações com dbt.
+Laboratório prático de um **Lakehouse moderno e 100% open source** totalmente containerizado, demonstrando conceitos avançados de engenharia de dados como versionamento, time travel, schema evolution e transformações com dbt.
 
 ## 📋 Índice
 
@@ -18,7 +18,7 @@ Laboratório prático de um **Lakehouse moderno** totalmente containerizado, dem
 
 ## 🎯 Visão Geral
 
-Este projeto implementa um **Lakehouse** completo em ambiente local usando:
+Este projeto implementa um **Lakehouse 100% open source** completo em ambiente local usando:
 
 - **DuckDB**: Engine analítico in-memory otimizado para OLAP
 - **Apache Iceberg**: Tabela format para versionamento e time travel
@@ -97,6 +97,22 @@ Um **Lakehouse** combina as melhores características de um **Data Lake** (armaz
 - **Schema Evolution**: Adicione/remova colunas sem quebrar queries antigas
 - **Hidden Partitioning**: Particionamento automático e otimizado
 - **Metadata Management**: Metadados versionados e eficientes
+
+#### Implementação no Projeto
+
+Este projeto implementa **Iceberg real** usando:
+
+1. **Tabela DuckDB** (`vendas_iceberg`): Tabela persistente no DuckDB para uso imediato
+2. **Tabela Iceberg Real** (`s3://lakehouse/iceberg/vendas_real/`): Estrutura Iceberg completa com:
+   - Metadados versionados (`metadata/*.metadata.json`)
+   - Arquivos de dados Parquet (`data/*.parquet`)
+   - Snapshots para time travel
+   - Estrutura de diretórios compatível com Iceberg
+
+**Script disponível:**
+- `create_real_iceberg_table.py`: Cria tabela Iceberg REAL com metadados completos
+
+📖 **Para mais detalhes técnicos sobre a implementação do Iceberg, consulte:** [`scripts/ICEBERG_IMPLEMENTATION.md`](scripts/ICEBERG_IMPLEMENTATION.md)
 
 **Exemplo de Time Travel:**
 ```sql
@@ -192,11 +208,11 @@ O serviço `init` executa automaticamente os seguintes scripts Python:
    - Salva em formato Parquet em `/app/data/vendas_raw.parquet`
    - Dados incluem: produtos, clientes, transações, descontos, etc.
 
-2. **`create_iceberg_table.py`**
-   - Configura conexão S3 (MinIO) no DuckDB
-   - Cria tabela `vendas_iceberg` no banco DuckDB persistente
-   - Insere dados do arquivo Parquet na tabela
-   - Verifica estatísticas da tabela criada
+2. **`create_real_iceberg_table.py`**
+   - Cria tabela **Iceberg REAL** com metadados completos
+   - Gera estrutura Iceberg no MinIO (`s3://lakehouse/iceberg/vendas_real/`)
+   - Cria tabela DuckDB `vendas_iceberg` para compatibilidade
+   - Insere dados e cria snapshots iniciais
 
 3. **`example_queries.py`**
    - Executa 8 queries analíticas de exemplo:
@@ -289,10 +305,10 @@ modern-lakehouse-duckdb-iceberg/
 │   ├── dbt_project.yml         # Configuração do projeto
 │   └── profiles.yml            # Perfil de conexão
 ├── scripts/
-│   ├── generate_fake_data.py   # Gera dados fake
-│   ├── create_iceberg_table.py # Cria tabela Iceberg
-│   ├── example_queries.py      # Queries de exemplo
-│   └── init_lakehouse.py       # Script de inicialização
+│   ├── generate_fake_data.py        # Gera dados fake
+│   ├── create_real_iceberg_table.py # Cria tabela Iceberg REAL
+│   ├── example_queries.py           # Queries de exemplo
+│   └── init_lakehouse.py            # Script de inicialização
 ├── notebooks/                  # Notebooks Jupyter
 │   ├── test_duckdb_connection.ipynb  # Notebook de teste
 │   └── README.md              # Documentação dos notebooks
@@ -532,12 +548,16 @@ docker compose exec duckdb python /app/scripts/generate_fake_data.py
 
 # Inserir na tabela Iceberg
 docker compose exec duckdb python -c "
-import sys
-sys.path.append('/app/scripts')
-from create_iceberg_table import *
+import duckdb
 con = duckdb.connect('/app/lakehouse/lakehouse.duckdb')
-setup_s3_connection(con)
-insert_data_from_parquet(con, '/app/data/vendas_raw.parquet')
+con.execute('INSTALL httpfs; LOAD httpfs;')
+con.execute('INSTALL iceberg; LOAD iceberg;')
+con.execute(\"SET s3_endpoint='minio:9000';\")
+con.execute(\"SET s3_access_key_id='admin';\")
+con.execute(\"SET s3_secret_access_key='minioadmin123';\")
+con.execute(\"SET s3_use_ssl=false;\")
+con.execute(\"SET s3_url_style='path';\")
+con.execute(\"INSERT INTO vendas_iceberg SELECT * FROM read_parquet('/app/data/vendas_raw.parquet');\")
 "
 ```
 
@@ -568,13 +588,14 @@ Este projeto simula uma arquitetura similar ao **Databricks Lakehouse**:
 | **ACID** | ✅ Sim | ✅ Sim (Iceberg) |
 | **UI** | Databricks Notebooks | Jupyter Lab / Docker CLI / MinIO Console |
 
-### Vantagens deste Projeto
+### Vantagens deste Projeto (100% Open Source)
 
 - ✅ **100% Local**: Roda completamente offline
-- ✅ **Zero Custo**: Sem necessidade de cloud
-- ✅ **Educacional**: Ideal para aprender conceitos
+- ✅ **Zero Custo**: Sem necessidade de cloud ou licenças
+- ✅ **100% Open Source**: Todas as tecnologias são open source (DuckDB, Iceberg, MinIO, dbt, Jupyter)
+- ✅ **Educacional**: Ideal para aprender conceitos de Lakehouse
 - ✅ **Rápido Setup**: `docker compose up` e pronto
-- ✅ **Open Source**: Todas as tecnologias são open source
+- ✅ **Alternativa Open Source**: Substitui soluções proprietárias como Databricks
 
 ### Limitações vs Databricks
 
@@ -667,7 +688,7 @@ docker compose logs init
 
 # Executar script manualmente para debug
 docker compose exec duckdb python /app/scripts/generate_fake_data.py
-docker compose exec duckdb python /app/scripts/create_iceberg_table.py
+docker compose exec duckdb python /app/scripts/create_real_iceberg_table.py
 
 # Verificar dependências
 docker compose exec duckdb pip list
@@ -747,11 +768,17 @@ Contribuições são bem-vindas! Sinta-se à vontade para abrir issues ou pull r
 
 ## 📚 Referências
 
+### Documentação Externa
+
 - [Apache Iceberg](https://iceberg.apache.org/)
 - [DuckDB](https://duckdb.org/)
 - [MinIO](https://min.io/)
 - [dbt](https://www.getdbt.com/)
 - [Databricks Lakehouse](https://www.databricks.com/product/data-lakehouse)
+
+### Documentação do Projeto
+
+- [Implementação Apache Iceberg](scripts/ICEBERG_IMPLEMENTATION.md) - Detalhes técnicos sobre a implementação do Iceberg neste projeto
 
 ---
 

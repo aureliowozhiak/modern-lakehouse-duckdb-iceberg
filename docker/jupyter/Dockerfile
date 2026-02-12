@@ -24,7 +24,10 @@ RUN pip install --no-cache-dir \
     pandas==2.1.3 \
     # MinIO/S3
     boto3==1.34.0 \
-    s3fs==2024.2.0 \
+    fsspec==2023.12.2 \
+    s3fs==2023.12.2 \
+    # Iceberg
+    pyiceberg[pyarrow,s3fs]==0.6.0 \
     # dbt
     protobuf==4.25.3 \
     dbt-core==1.7.0 \

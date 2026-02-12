@@ -124,7 +124,7 @@ def main():
     print("  1. Aguardar MinIO estar disponível")
     print("  2. Criar bucket no MinIO")
     print("  3. Gerar dados fake")
-    print("  4. Criar tabela Iceberg")
+    print("  4. Criar tabela Iceberg REAL (com metadados)")
     print("  5. Inserir dados na tabela")
     print("\nAguarde...\n")
     
@@ -148,7 +148,7 @@ def main():
     # Scripts opcionais: podem falhar sem quebrar o sistema
     critical_scripts = [
         ("/app/scripts/generate_fake_data.py", "Gerando dados fake", True),
-        ("/app/scripts/create_iceberg_table.py", "Criando tabela Iceberg", True),
+        ("/app/scripts/create_real_iceberg_table.py", "Criando tabela Iceberg REAL", True),
     ]
     
     optional_scripts = [
