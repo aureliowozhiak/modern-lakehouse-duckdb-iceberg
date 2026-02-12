@@ -113,7 +113,7 @@ def generate_sales_data(num_records=1000):
 
 def save_to_parquet(df, output_path):
     """
-    Salva DataFrame em formato Parquet.
+    Salva DataFrame em formato Parquet (para uso interno no DuckDB).
     
     Args:
         df: DataFrame a ser salvo
@@ -121,18 +121,91 @@ def save_to_parquet(df, output_path):
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     df.to_parquet(output_path, index=False, engine='pyarrow')
-    print(f"\n✓ Dados salvos em: {output_path}")
+    print(f"\n✓ Dados salvos em Parquet: {output_path}")
     print(f"  Tamanho do arquivo: {os.path.getsize(output_path) / 1024:.2f} KB")
+
+def save_to_csv(df, output_path):
+    """
+    Salva DataFrame em formato CSV (para dados raw no MinIO).
+    
+    Args:
+        df: DataFrame a ser salvo
+        output_path: Caminho do arquivo de saída
+    """
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    df.to_csv(output_path, index=False, encoding='utf-8')
+    print(f"✓ Dados salvos em CSV: {output_path}")
+    print(f"  Tamanho do arquivo: {os.path.getsize(output_path) / 1024:.2f} KB")
+
+def upload_to_minio(csv_path):
+    """
+    Faz upload do arquivo CSV para o MinIO (dados raw).
+    
+    Args:
+        csv_path: Caminho do arquivo CSV local
+    """
+    try:
+        import boto3
+        from botocore.config import Config
+        
+        minio_endpoint = os.getenv('MINIO_ENDPOINT', 'minio:9000')
+        minio_access_key = os.getenv('MINIO_ACCESS_KEY', 'admin')
+        minio_secret_key = os.getenv('MINIO_SECRET_KEY', 'minioadmin123')
+        minio_bucket = os.getenv('MINIO_BUCKET', 'lakehouse')
+        
+        print(f"\nFazendo upload do arquivo CSV (raw) para MinIO...")
+        print(f"  Bucket: {minio_bucket}")
+        print(f"  Arquivo: {csv_path}")
+        
+        s3_client = boto3.client(
+            's3',
+            endpoint_url=f'http://{minio_endpoint}',
+            aws_access_key_id=minio_access_key,
+            aws_secret_access_key=minio_secret_key,
+            config=Config(signature_version='s3v4'),
+            region_name='us-east-1'
+        )
+        
+        # Criar bucket se não existir
+        try:
+            s3_client.head_bucket(Bucket=minio_bucket)
+            print(f"✓ Bucket '{minio_bucket}' já existe")
+        except:
+            s3_client.create_bucket(Bucket=minio_bucket)
+            print(f"✓ Bucket '{minio_bucket}' criado")
+        
+        # Upload do arquivo CSV como raw
+        s3_key = "raw/vendas_raw.csv"
+        s3_client.upload_file(csv_path, minio_bucket, s3_key)
+        
+        file_size = os.path.getsize(csv_path) / 1024
+        print(f"✓ Arquivo CSV enviado para MinIO: s3://{minio_bucket}/{s3_key}")
+        print(f"  Tamanho: {file_size:.2f} KB")
+        print(f"  Você pode visualizar no MinIO Console: http://localhost:9001")
+        
+    except ImportError:
+        print("⚠ boto3 não disponível, pulando upload para MinIO")
+    except Exception as e:
+        print(f"⚠ Erro ao fazer upload para MinIO: {e}")
+        print("Continuando mesmo assim...")
 
 if __name__ == "__main__":
     # Gerar dados
     df = generate_sales_data(num_records=5000)
     
-    # Salvar em Parquet
     output_dir = "/app/data"
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, "vendas_raw.parquet")
-    save_to_parquet(df, output_path)
+    
+    # Salvar em Parquet local (para uso no DuckDB)
+    parquet_path = os.path.join(output_dir, "vendas_raw.parquet")
+    save_to_parquet(df, parquet_path)
+    
+    # Salvar em CSV local
+    csv_path = os.path.join(output_dir, "vendas_raw.csv")
+    save_to_csv(df, csv_path)
+    
+    # Upload CSV para MinIO (dados raw)
+    upload_to_minio(csv_path)
     
     # Mostrar amostra
     print("\n" + "="*80)

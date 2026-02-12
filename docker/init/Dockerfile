@@ -25,7 +25,7 @@ RUN pip install --no-cache-dir \
 WORKDIR /app
 
 # Create directories
-RUN mkdir -p /app/scripts /app/lakehouse
+RUN mkdir -p /app/scripts /app/data /app/lakehouse
 
 # Default command
 CMD ["python"]

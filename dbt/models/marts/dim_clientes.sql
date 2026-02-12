@@ -8,10 +8,11 @@
 -- Dimensão de clientes: Agregação de informações por cliente
 SELECT
     cliente_id,
-    cliente_nome,
-    cliente_email,
-    cliente_cidade,
-    cliente_estado,
+    -- Pegar informações mais recentes do cliente (última venda)
+    MAX(cliente_nome) as cliente_nome,
+    MAX(cliente_email) as cliente_email,
+    MAX(cliente_cidade) as cliente_cidade,
+    MAX(cliente_estado) as cliente_estado,
     
     -- Métricas agregadas
     COUNT(*) as total_compras,
@@ -37,5 +38,5 @@ SELECT
     ROW_NUMBER() OVER (ORDER BY SUM(valor_final) DESC) as ranking_cliente
     
 FROM {{ ref('stg_vendas') }}
-GROUP BY cliente_id, cliente_nome, cliente_email, cliente_cidade, cliente_estado
+GROUP BY cliente_id
 

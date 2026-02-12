@@ -5,8 +5,8 @@ models:
     description: "Fato de vendas com todas as métricas e dimensões"
     columns:
       - name: venda_id
+        description: "ID da venda (pode haver múltiplas linhas por venda - uma por produto)"
         tests:
-          - unique
           - not_null
       - name: valor_final
         tests:

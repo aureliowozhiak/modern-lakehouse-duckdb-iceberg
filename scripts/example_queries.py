@@ -5,33 +5,19 @@ Demonstra time travel, schema evolution e análises de negócio.
 
 import duckdb
 import os
+import sys
 from datetime import datetime, timedelta
 
 def setup_connection():
     """
-    Configura conexão DuckDB com S3 (MinIO).
-    
+    Configura conexão DuckDB ao banco persistente usado no Lakehouse.
+
     Returns:
         Conexão DuckDB configurada
     """
-    con = duckdb.connect()
-    
-    minio_endpoint = os.getenv('MINIO_ENDPOINT', 'minio:9000')
-    minio_access_key = os.getenv('MINIO_ACCESS_KEY', 'admin')
-    minio_secret_key = os.getenv('MINIO_SECRET_KEY', 'minioadmin123')
-    
-    con.execute(f"""
-        INSTALL httpfs;
-        LOAD httpfs;
-        INSTALL iceberg;
-        LOAD iceberg;
-        SET s3_endpoint='{minio_endpoint}';
-        SET s3_access_key_id='{minio_access_key}';
-        SET s3_secret_access_key='{minio_secret_key}';
-        SET s3_use_ssl=false;
-        SET s3_url_style='path';
-    """)
-    
+    db_path = "/app/lakehouse/lakehouse.duckdb"
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    con = duckdb.connect(db_path)
     return con
 
 def query_1_revenue_by_category(con):
@@ -283,7 +269,7 @@ def main():
         except Exception as e:
             print(f"\n❌ Tabela 'vendas_iceberg' não encontrada!")
             print("Execute primeiro o script create_iceberg_table.py")
-            return
+            sys.exit(1)
         
         # Executar queries
         query_1_revenue_by_category(con)

@@ -3,17 +3,5 @@ lakehouse:
   outputs:
     dev:
       type: duckdb
-      path: ':memory:'
-      extensions:
-        - httpfs
-        - iceberg
-      plugins:
-        - httpfs
-        - iceberg
-      settings:
-        s3_endpoint: 'minio:9000'
-        s3_access_key_id: 'admin'
-        s3_secret_access_key: 'minioadmin123'
-        s3_use_ssl: false
-        s3_url_style: 'path'
+      path: '/app/lakehouse/lakehouse.duckdb'
 

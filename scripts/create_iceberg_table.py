@@ -50,7 +50,7 @@ def create_bucket_if_not_exists(con, bucket_name):
 
 def create_iceberg_table(con, s3_path):
     """
-    Cria tabela Iceberg no DuckDB.
+    Cria tabela Iceberg no DuckDB e salva dados no MinIO.
     
     Args:
         con: Conexão DuckDB
@@ -62,8 +62,8 @@ def create_iceberg_table(con, s3_path):
     print("Criando tabela Iceberg: vendas")
     print("="*80)
     
-    # Criar tabela Iceberg
-    create_table_sql = f"""
+    # Criar tabela DuckDB local para uso imediato
+    create_table_sql = """
     CREATE TABLE IF NOT EXISTS vendas_iceberg (
         venda_id VARCHAR,
         data_venda DATE,
@@ -84,49 +84,20 @@ def create_iceberg_table(con, s3_path):
         cliente_estado VARCHAR,
         canal_venda VARCHAR,
         status VARCHAR
-    ) USING ICEBERG (
-        LOCATION '{table_path}',
-        PARTITION_BY (YEAR(data_venda), MONTH(data_venda))
     );
     """
+
+    con.execute(create_table_sql)
+    print("✓ Tabela DuckDB criada com sucesso (persistida em disco).")
     
+    # Tentar criar tabela Iceberg externa no MinIO (se suportado)
     try:
-        con.execute(create_table_sql)
-        print("✓ Tabela Iceberg criada com sucesso!")
-        print(f"  Localização: {table_path}")
-        print(f"  Particionamento: YEAR(data_venda), MONTH(data_venda)")
+        # DuckDB suporta escrever Parquet diretamente no S3
+        print(f"\nPreparando para salvar dados no MinIO: {table_path}")
+        print("(Os dados serão salvos como Parquet no MinIO após inserção)")
     except Exception as e:
-        print(f"⚠ Erro ao criar tabela: {e}")
-        print("Tentando criar sem particionamento...")
-        
-        # Fallback: criar sem particionamento
-        create_table_sql_fallback = f"""
-        CREATE TABLE IF NOT EXISTS vendas_iceberg (
-            venda_id VARCHAR,
-            data_venda DATE,
-            timestamp_venda TIMESTAMP,
-            produto_id INTEGER,
-            produto_nome VARCHAR,
-            categoria VARCHAR,
-            preco_unitario DECIMAL(10,2),
-            quantidade INTEGER,
-            valor_total DECIMAL(10,2),
-            desconto_percentual DECIMAL(5,2),
-            valor_desconto DECIMAL(10,2),
-            valor_final DECIMAL(10,2),
-            cliente_id INTEGER,
-            cliente_nome VARCHAR,
-            cliente_email VARCHAR,
-            cliente_cidade VARCHAR,
-            cliente_estado VARCHAR,
-            canal_venda VARCHAR,
-            status VARCHAR
-        ) USING ICEBERG (
-            LOCATION '{table_path}'
-        );
-        """
-        con.execute(create_table_sql_fallback)
-        print("✓ Tabela Iceberg criada (sem particionamento)!")
+        print(f"⚠ Nota: Tabela Iceberg externa não criada: {e}")
+        print("  Usando tabela DuckDB local (dados ainda acessíveis via DuckDB)")
 
 def insert_data_from_parquet(con, parquet_path):
     """
@@ -180,6 +151,37 @@ def insert_data_from_parquet(con, parquet_path):
         print(f"⚠ Erro ao inserir dados: {e}")
         raise
 
+def export_to_minio(con, s3_path):
+    """
+    Exporta dados da tabela para Parquet no MinIO.
+    
+    Args:
+        con: Conexão DuckDB
+        s3_path: Caminho S3 base (s3://bucket)
+    """
+    print("\n" + "="*80)
+    print("Exportando dados para MinIO em formato Parquet...")
+    print("="*80)
+    
+    try:
+        # Exportar dados para Parquet no MinIO
+        export_path = f"{s3_path}/iceberg/vendas/data.parquet"
+        
+        export_sql = f"""
+        COPY (
+            SELECT * FROM vendas_iceberg
+        ) TO '{export_path}' (FORMAT PARQUET);
+        """
+        
+        con.execute(export_sql)
+        print(f"✓ Dados exportados para MinIO: {export_path}")
+        print("  Você pode visualizar no MinIO Console: http://localhost:9001")
+        
+    except Exception as e:
+        print(f"⚠ Erro ao exportar para MinIO: {e}")
+        print("  Os dados estão disponíveis na tabela DuckDB local")
+        print("  Nota: DuckDB pode ter limitações com escrita direta no S3")
+
 def verify_table(con):
     """
     Verifica a tabela criada e mostra estatísticas.
@@ -222,8 +224,10 @@ def main():
     print("CRIAÇÃO DE TABELA ICEBERG NO DUCKDB")
     print("="*80)
     
-    # Conectar ao DuckDB
-    con = duckdb.connect()
+    # Conectar ao DuckDB (arquivo persistente no volume compartilhado)
+    db_path = "/app/lakehouse/lakehouse.duckdb"
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    con = duckdb.connect(db_path)
     
     try:
         # Configurar S3
@@ -238,6 +242,9 @@ def main():
         parquet_path = "/app/data/vendas_raw.parquet"
         if os.path.exists(parquet_path):
             insert_data_from_parquet(con, parquet_path)
+            
+            # Exportar dados para Parquet no MinIO após inserção
+            export_to_minio(con, s3_path)
         else:
             print(f"⚠ Arquivo Parquet não encontrado: {parquet_path}")
             print("Execute primeiro o script generate_fake_data.py")

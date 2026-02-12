@@ -32,3 +32,8 @@ dbt/logs/
 .DS_Store
 Thumbs.db
 
+# Jupyter Notebooks
+notebooks/.ipynb_checkpoints/
+notebooks/*.pyc
+notebooks/__pycache__/
+

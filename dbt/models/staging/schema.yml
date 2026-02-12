@@ -51,9 +51,8 @@ models:
     description: "Staging model com dados de vendas limpos e padronizados"
     columns:
       - name: venda_id
-        description: "ID único da venda"
+        description: "ID da venda (pode haver múltiplas linhas por venda - uma por produto)"
         tests:
-          - unique
           - not_null
       - name: data_venda
         description: "Data da venda"

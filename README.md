@@ -12,6 +12,7 @@ Laboratório prático de um **Lakehouse moderno** totalmente containerizado, dem
 - [Estrutura do Projeto](#estrutura-do-projeto)
 - [Funcionalidades](#funcionalidades)
 - [Acessando os Serviços](#acessando-os-serviços)
+- [Notebooks Jupyter](#notebooks-jupyter)
 - [Exemplos de Uso](#exemplos-de-uso)
 - [Comparação com Databricks](#comparação-com-databricks)
 
@@ -23,6 +24,7 @@ Este projeto implementa um **Lakehouse** completo em ambiente local usando:
 - **Apache Iceberg**: Tabela format para versionamento e time travel
 - **MinIO**: Storage S3-compatible para simular cloud storage
 - **dbt**: Ferramenta de transformação de dados (ELT)
+- **Jupyter Lab**: Ambiente de notebooks integrado para análise e exploração
 - **Docker Compose**: Orquestração de todos os serviços
 
 ### O que é um Lakehouse?
@@ -51,6 +53,15 @@ Um **Lakehouse** combina as melhores características de um **Data Lake** (armaz
 │  │  Port: 9000  │      │              │      │              │  │
 │  │  Port: 9001  │      │              │      │              │  │
 │  └──────────────┘      └──────────────┘      └──────────────┘  │
+│         ▲                    ▲                    ▲             │
+│         │                    │                    │             │
+│         └────────────────────┴────────────────────┘             │
+│                           │                                     │
+│                    ┌──────────────┐                            │
+│                    │   Jupyter     │                            │
+│                    │   (Notebooks) │                            │
+│                    │  Port: 8888   │                            │
+│                    └──────────────┘                            │
 │         ▲                    ▲                                   │
 │         │                    │                                   │
 │         └────────────────────┘                                   │
@@ -137,35 +148,121 @@ cd modern-lakehouse-duckdb-iceberg
 ### 2. Inicie os serviços
 
 ```bash
-docker compose up -d
+docker compose up
 ```
 
-Este comando irá:
+**⚠️ Importante**: Execute sem `-d` na primeira vez para ver os logs em tempo real e garantir que tudo está funcionando.
+
+Este comando irá automaticamente:
 - ✅ Baixar as imagens necessárias
 - ✅ Criar os containers
 - ✅ Configurar volumes persistentes
-- ✅ Executar o serviço de inicialização automaticamente
+- ✅ Subir MinIO (S3-compatible storage)
+- ✅ Subir DuckDB (banco de dados analítico)
+- ✅ Subir dbt (ferramenta de transformação)
+- ✅ Subir Jupyter Lab (ambiente de notebooks) - http://localhost:8888
+- ✅ **Executar automaticamente todos os scripts Python:**
+  - Criar bucket no MinIO
+  - Gerar 5.000 registros de vendas fake
+  - Criar tabela Iceberg `vendas_iceberg`
+  - Inserir dados na tabela
+  - Executar queries de exemplo
+- ✅ **Executar automaticamente transformações dbt:**
+  - Modelos staging (limpeza de dados)
+  - Modelos marts (modelos analíticos)
+  - Testes de qualidade de dados
 
-### 3. Verifique os logs
+### 3. Processo Automático de Inicialização
+
+O sistema executa automaticamente na seguinte ordem:
+
+#### Etapa 1: MinIO (Storage)
+- MinIO sobe e fica disponível nas portas 9000 (API) e 9001 (Console)
+- Healthcheck garante que está pronto antes de continuar
+
+#### Etapa 2: DuckDB (Banco de Dados)
+- Container DuckDB sobe e fica aguardando conexões
+- Volume compartilhado `/app/lakehouse` é criado para persistir dados
+
+#### Etapa 3: Inicialização (init-service)
+O serviço `init` executa automaticamente os seguintes scripts Python:
+
+1. **`generate_fake_data.py`**
+   - Gera 5.000 registros de vendas simulados
+   - Salva em formato Parquet em `/app/data/vendas_raw.parquet`
+   - Dados incluem: produtos, clientes, transações, descontos, etc.
+
+2. **`create_iceberg_table.py`**
+   - Configura conexão S3 (MinIO) no DuckDB
+   - Cria tabela `vendas_iceberg` no banco DuckDB persistente
+   - Insere dados do arquivo Parquet na tabela
+   - Verifica estatísticas da tabela criada
+
+3. **`example_queries.py`**
+   - Executa 8 queries analíticas de exemplo:
+     - Receita por categoria
+     - Tendência de vendas mensal
+     - Top clientes
+     - Análise por canal
+     - Time travel (demonstração)
+     - Schema evolution (demonstração)
+     - Performance de produtos
+     - Análise regional
+
+#### Etapa 4: Transformações dbt (dbt-run-service)
+Após a inicialização estar completa, o serviço `dbt-run` executa automaticamente:
+
+1. **`dbt run`**
+   - Executa todos os modelos dbt na ordem de dependência:
+     - **Staging**: `stg_vendas` (limpeza e padronização)
+     - **Marts**: 
+       - `fct_vendas` (fato de vendas)
+       - `dim_produtos` (dimensão de produtos)
+       - `dim_clientes` (dimensão de clientes)
+       - `mart_vendas_mensal` (agregação mensal)
+
+2. **`dbt test`**
+   - Executa testes de qualidade de dados:
+     - Verifica unicidade de chaves
+     - Verifica valores não nulos
+     - Valida integridade referencial
+
+### 4. Verificar Status
 
 ```bash
 # Ver logs de todos os serviços
 docker compose logs -f
 
 # Ver logs de um serviço específico
-docker compose logs -f init
+docker compose logs -f init        # Inicialização
+docker compose logs -f dbt-run     # Transformações dbt
+
+# Verificar status dos containers
+docker compose ps
 ```
 
-### 4. Aguarde a inicialização
+### 5. Tempo Estimado
 
-O serviço `init` irá:
-1. Aguardar MinIO estar disponível
-2. Criar o bucket `lakehouse`
-3. Gerar 5.000 registros de vendas fake
-4. Criar tabela Iceberg `vendas_iceberg`
-5. Inserir os dados na tabela
+- **MinIO e DuckDB**: ~10-20 segundos
+- **Inicialização (scripts Python)**: ~1-2 minutos
+- **Transformações dbt**: ~30 segundos
+- **Total**: ~2-3 minutos
 
-**Tempo estimado**: 1-2 minutos
+### 6. Verificar Sucesso
+
+Após a inicialização, você deve ver mensagens como:
+
+```
+✓ INICIALIZAÇÃO CONCLUÍDA COM SUCESSO!
+✓ dbt executado com sucesso!
+```
+
+Se tudo funcionou corretamente, você pode:
+- Acessar MinIO Console: http://localhost:9001
+- Acessar Jupyter Lab: http://localhost:8888
+- Executar queries adicionais no DuckDB
+- Explorar os modelos dbt criados
+- Abrir notebooks para análise interativa
 
 ## 📁 Estrutura do Projeto
 
@@ -196,6 +293,9 @@ modern-lakehouse-duckdb-iceberg/
 │   ├── create_iceberg_table.py # Cria tabela Iceberg
 │   ├── example_queries.py      # Queries de exemplo
 │   └── init_lakehouse.py       # Script de inicialização
+├── notebooks/                  # Notebooks Jupyter
+│   ├── test_duckdb_connection.ipynb  # Notebook de teste
+│   └── README.md              # Documentação dos notebooks
 ├── data/                       # Dados gerados (volumes)
 ├── docker-compose.yml          # Orquestração dos serviços
 └── README.md                   # Este arquivo
@@ -203,27 +303,38 @@ modern-lakehouse-duckdb-iceberg/
 
 ## ⚙️ Funcionalidades
 
-### ✅ Funcionalidades Implementadas
+### ✅ Funcionalidades Implementadas e Automatizadas
 
 1. **Criação Automática de Bucket**
-   - Bucket `lakehouse` criado automaticamente no MinIO
+   - Bucket `lakehouse` criado automaticamente no MinIO durante inicialização
+   - Configuração S3-compatible pronta para uso
 
-2. **Geração de Dados Fake**
-   - 5.000 registros de vendas simulados
-   - Dados realistas com produtos, clientes, descontos, etc
+2. **Geração Automática de Dados Fake**
+   - 5.000 registros de vendas simulados gerados automaticamente
+   - Dados realistas com produtos, clientes, descontos, canais de venda, etc
+   - Período: 2023-2024 com distribuição realista
 
-3. **Tabela Iceberg**
-   - Tabela `vendas_iceberg` com particionamento por ano/mês
-   - Armazenada no MinIO em formato Iceberg
+3. **Criação Automática de Tabela Iceberg**
+   - Tabela `vendas_iceberg` criada automaticamente no DuckDB
+   - Dados inseridos automaticamente do arquivo Parquet gerado
+   - Banco de dados persistente em volume compartilhado
 
-4. **Queries Analíticas**
-   - 8 queries de exemplo demonstrando análises de negócio
-   - Time travel e schema evolution
+4. **Execução Automática de Queries Analíticas**
+   - 8 queries de exemplo executadas automaticamente durante inicialização:
+     - Receita por categoria
+     - Tendência de vendas mensal
+     - Top clientes
+     - Análise por canal
+     - Time travel (demonstração)
+     - Schema evolution (demonstração)
+     - Performance de produtos
+     - Análise regional
 
-5. **Transformações dbt**
-   - Modelos staging (limpeza)
-   - Modelos marts (análise)
-   - Dimensões e fatos
+5. **Transformações dbt Automáticas**
+   - Modelos staging (limpeza) executados automaticamente
+   - Modelos marts (análise) executados automaticamente
+   - Dimensões e fatos criados automaticamente
+   - Testes de qualidade executados automaticamente
 
 ## 🌐 Acessando os Serviços
 
@@ -270,9 +381,76 @@ dbt docs generate
 dbt docs serve --port 8080
 ```
 
+## 📓 Notebooks Jupyter
+
+O projeto inclui um ambiente **Jupyter Lab** totalmente integrado com o ecossistema do Lakehouse, permitindo análise interativa e exploração de dados.
+
+### Acessar Jupyter Lab
+
+**URL**: http://localhost:8888
+
+O Jupyter Lab inicia automaticamente quando você executa `docker compose up`. Não requer autenticação (apenas para desenvolvimento local).
+
+### Funcionalidades
+
+- ✅ **Conexão direta ao DuckDB**: Acesse o banco de dados compartilhado
+- ✅ **Integração com MinIO**: Configure e acesse dados no MinIO via S3
+- ✅ **Acesso às tabelas do dbt**: Consulte modelos transformados (dim_*, fct_*, mart_*)
+- ✅ **Visualizações**: Bibliotecas matplotlib, seaborn e plotly incluídas
+- ✅ **Scripts disponíveis**: Acesso aos scripts Python do projeto
+
+### Notebooks Disponíveis
+
+- **`test_duckdb_connection.ipynb`**: Notebook de teste que demonstra:
+  - Conexão com DuckDB e MinIO
+  - Execução de queries baseadas em `scripts/example_queries.py`
+  - Visualizações de dados
+  - Verificação de tabelas do dbt
+
+### Iniciar o Serviço
+
+```bash
+# Iniciar apenas o Jupyter (e dependências)
+docker compose up -d jupyter
+
+# Ou iniciar tudo
+docker compose up -d
+```
+
+### Estrutura de Volumes
+
+Os notebooks têm acesso a:
+- `./notebooks` → `/app/notebooks` - Seus notebooks
+- `./scripts` → `/app/scripts` - Scripts Python do projeto
+- `./data` → `/app/data` - Dados brutos
+- `./dbt` → `/app/dbt` - Projeto dbt
+- `lakehouse_data` → `/app/lakehouse` - Banco DuckDB compartilhado
+
+### Exemplo Rápido
+
+```python
+import duckdb
+import os
+
+# Conectar ao DuckDB compartilhado
+con = duckdb.connect("/app/lakehouse/lakehouse.duckdb")
+
+# Executar query
+df = con.execute("SELECT * FROM vendas_iceberg LIMIT 10").fetchdf()
+print(df)
+```
+
+📖 **Para mais detalhes, consulte o [README dos notebooks](notebooks/README.md)**
+
 ## 💡 Exemplos de Uso
 
-### 1. Executar Queries de Exemplo
+### ⚡ Tudo é Automático!
+
+**Importante**: Todos os scripts Python e transformações dbt são executados automaticamente quando você roda `docker compose up`. Você não precisa executar nada manualmente!
+
+### 1. Re-executar Queries de Exemplo (Opcional)
+
+Se quiser executar as queries novamente:
 
 ```bash
 docker compose exec duckdb python /app/scripts/example_queries.py
@@ -288,7 +466,9 @@ Isso executará 8 queries demonstrando:
 - Performance de produtos
 - Análise regional
 
-### 2. Executar Transformações dbt
+### 2. Re-executar Transformações dbt (Opcional)
+
+Se quiser executar as transformações dbt novamente:
 
 ```bash
 # Executar todos os modelos
@@ -342,10 +522,12 @@ result = con.execute("""
 print(result)
 ```
 
-### 4. Adicionar Mais Dados
+### 4. Adicionar Mais Dados (Opcional)
+
+Se quiser gerar mais dados além dos 5.000 iniciais:
 
 ```bash
-# Gerar mais dados
+# Gerar mais dados (edite o script para alterar quantidade)
 docker compose exec duckdb python /app/scripts/generate_fake_data.py
 
 # Inserir na tabela Iceberg
@@ -353,7 +535,7 @@ docker compose exec duckdb python -c "
 import sys
 sys.path.append('/app/scripts')
 from create_iceberg_table import *
-con = duckdb.connect()
+con = duckdb.connect('/app/lakehouse/lakehouse.duckdb')
 setup_s3_connection(con)
 insert_data_from_parquet(con, '/app/data/vendas_raw.parquet')
 "
@@ -384,7 +566,7 @@ Este projeto simula uma arquitetura similar ao **Databricks Lakehouse**:
 | **Time Travel** | ✅ Sim | ✅ Sim (Iceberg) |
 | **Schema Evolution** | ✅ Sim | ✅ Sim (Iceberg) |
 | **ACID** | ✅ Sim | ✅ Sim (Iceberg) |
-| **UI** | Databricks Notebooks | Docker CLI / MinIO Console |
+| **UI** | Databricks Notebooks | Jupyter Lab / Docker CLI / MinIO Console |
 
 ### Vantagens deste Projeto
 
@@ -397,39 +579,150 @@ Este projeto simula uma arquitetura similar ao **Databricks Lakehouse**:
 ### Limitações vs Databricks
 
 - ⚠️ **Escala**: Limitado a máquina local (vs cluster distribuído)
-- ⚠️ **Colaboração**: Sem notebooks compartilhados
+- ⚠️ **Colaboração**: Notebooks locais (vs notebooks compartilhados na nuvem)
 - ⚠️ **ML**: Sem MLflow integrado
 - ⚠️ **Governança**: Sem Unity Catalog
 - ⚠️ **Performance**: DuckDB é single-node (vs Spark distribuído)
 
 ## 🛠️ Troubleshooting
 
-### MinIO não inicia
+### Problema: MinIO não inicia
 
+**Sintomas**: Container minio para ou não responde
+
+**Solução**:
 ```bash
 # Verificar logs
 docker compose logs minio
 
+# Verificar se a porta está em uso
+netstat -an | grep 9000
+
 # Reiniciar serviço
 docker compose restart minio
+
+# Se persistir, recriar volumes
+docker compose down -v
+docker compose up
 ```
 
-### Tabela Iceberg não encontrada
+### Problema: Tabela Iceberg não encontrada
 
+**Sintomas**: Erro "Table 'vendas_iceberg' not found" ao executar queries
+
+**Solução**:
 ```bash
-# Re-executar inicialização
+# Verificar se a inicialização foi concluída
+docker compose logs init
+
+# Re-executar inicialização completa
+docker compose down
 docker compose up init
+
+# Verificar se o banco foi criado
+docker compose exec duckdb ls -lh /app/lakehouse/
 ```
 
-### Erro de conexão S3
+### Problema: Erro de conexão S3
 
-Verifique as variáveis de ambiente no `docker-compose.yml` e certifique-se de que o MinIO está rodando.
+**Sintomas**: Erro ao conectar ao MinIO (timeout, connection refused)
 
-### dbt não encontra tabela
-
-Certifique-se de que a tabela Iceberg foi criada primeiro:
+**Solução**:
 ```bash
+# Verificar se MinIO está rodando
+docker compose ps minio
+
+# Verificar healthcheck
+docker compose exec minio curl -f http://localhost:9000/minio/health/live
+
+# Verificar variáveis de ambiente
+docker compose config | grep MINIO
+```
+
+### Problema: dbt não encontra tabela
+
+**Sintomas**: Erro "Table 'vendas_iceberg' does not exist" no dbt
+
+**Solução**:
+```bash
+# Verificar logs da inicialização
+docker compose logs init
+
+# Verificar se o banco existe
+docker compose exec dbt-run ls -lh /app/lakehouse/
+
+# Re-executar inicialização e dbt
+docker compose up init
+docker compose up dbt-run
+```
+
+### Problema: Scripts Python falham
+
+**Sintomas**: Erros ao executar scripts de inicialização
+
+**Solução**:
+```bash
+# Verificar logs detalhados
+docker compose logs init
+
+# Executar script manualmente para debug
+docker compose exec duckdb python /app/scripts/generate_fake_data.py
 docker compose exec duckdb python /app/scripts/create_iceberg_table.py
+
+# Verificar dependências
+docker compose exec duckdb pip list
+```
+
+### Problema: dbt run falha
+
+**Sintomas**: Erro ao executar `dbt run`
+
+**Solução**:
+```bash
+# Verificar logs
+docker compose logs dbt-run
+
+# Executar dbt manualmente para debug
+docker compose exec dbt dbt debug
+docker compose exec dbt dbt run --select staging
+docker compose exec dbt dbt run --select marts
+
+# Verificar se o banco está acessível
+docker compose exec dbt python -c "import duckdb; con = duckdb.connect('/app/lakehouse/lakehouse.duckdb'); print(con.execute('SELECT COUNT(*) FROM vendas_iceberg').fetchone())"
+```
+
+### Problema: Containers param imediatamente
+
+**Sintomas**: Containers iniciam e param logo em seguida
+
+**Solução**:
+```bash
+# Verificar logs de todos os serviços
+docker compose logs
+
+# Verificar status
+docker compose ps -a
+
+# Recriar tudo do zero
+docker compose down -v
+docker compose build --no-cache
+docker compose up
+```
+
+### Limpar tudo e começar do zero
+
+Se nada funcionar, limpe tudo e recomece:
+
+```bash
+# Parar e remover tudo
+docker compose down -v
+
+# Remover imagens (opcional)
+docker compose down --rmi all
+
+# Reconstruir e iniciar
+docker compose build --no-cache
+docker compose up
 ```
 
 ## 📝 Próximos Passos

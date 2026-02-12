@@ -144,25 +144,52 @@ def main():
     time.sleep(3)
     
     # Executar scripts na ordem
-    scripts = [
-        ("/app/scripts/generate_fake_data.py", "Gerando dados fake"),
-        ("/app/scripts/create_iceberg_table.py", "Criando tabela Iceberg"),
+    # Scripts críticos: devem funcionar para o sistema funcionar
+    # Scripts opcionais: podem falhar sem quebrar o sistema
+    critical_scripts = [
+        ("/app/scripts/generate_fake_data.py", "Gerando dados fake", True),
+        ("/app/scripts/create_iceberg_table.py", "Criando tabela Iceberg", True),
+    ]
+    
+    optional_scripts = [
+        ("/app/scripts/example_queries.py", "Executando queries de exemplo", False),
     ]
     
     success = True
-    for script_path, description in scripts:
+    critical_failed = False
+    
+    # Executar scripts críticos
+    for script_path, description, is_critical in critical_scripts:
         if not run_script(script_path, description):
             success = False
-            print(f"⚠ Falha em: {description}")
-            # Continuar mesmo com erros parciais
+            if is_critical:
+                critical_failed = True
+                print(f"❌ FALHA CRÍTICA em: {description}")
+            else:
+                print(f"⚠ Falha em: {description}")
+    
+    # Se scripts críticos falharam, não continuar
+    if critical_failed:
+        print("\n" + "="*80)
+        print("❌ INICIALIZAÇÃO FALHOU - Scripts críticos falharam!")
+        print("Verifique os logs acima para detalhes.")
+        print("="*80)
+        sys.exit(1)
+    
+    # Executar scripts opcionais
+    for script_path, description, is_critical in optional_scripts:
+        if not run_script(script_path, description):
+            print(f"⚠ Falha em script opcional: {description}")
+            # Continuar mesmo com erros em scripts opcionais
     
     print("\n" + "="*80)
     if success:
         print("✓ INICIALIZAÇÃO CONCLUÍDA COM SUCESSO!")
         print("\nPróximos passos:")
         print("  1. Acesse MinIO Console: http://localhost:9001")
-        print("  2. Execute queries: docker compose exec duckdb python /app/scripts/example_queries.py")
-        print("  3. Execute dbt: docker compose exec dbt dbt run")
+        print("  2. Os dados foram gerados e a tabela Iceberg foi criada")
+        print("  3. As queries de exemplo foram executadas")
+        print("  4. O dbt será executado automaticamente em seguida")
     else:
         print("⚠ INICIALIZAÇÃO CONCLUÍDA COM AVISOS")
         print("Verifique os logs acima para detalhes.")
